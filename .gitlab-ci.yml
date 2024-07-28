@@ -1,0 +1,41 @@
+stages:
+  - build
+  - push
+  - deploy
+
+variables:
+  DOCKER_DRIVER: overlay2
+
+# Cache Docker layers
+cache:
+  paths:
+    - /var/lib/docker
+
+# Build the Docker image
+build:
+  stage: build
+  image: docker:19.03.12
+  services:
+    - docker:19.03.12-dind
+  script:
+    - docker build -t $DOCKER_HUB_USERNAME/animal-facts .
+
+# Push the Docker image to Docker Hub
+push:
+  stage: push
+  image: docker:19.03.12
+  services:
+    - docker:19.03.12-dind
+  script:
+    - echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+    - docker push $DOCKER_HUB_USERNAME/animal-facts
+
+# Deploy the Docker image locally
+deploy:
+  stage: deploy
+  script:
+    - echo "Deploying Docker image locally"
+    - docker pull $DOCKER_HUB_USERNAME/animal-facts:latest
+    - docker run -d -p 8080:8080 --name animal-facts $DOCKER_HUB_USERNAME/animal-facts:latest
+  only:
+    - master
